@@ -3,7 +3,7 @@
 import math
 import time
 from src.common import config, settings, utils
-from interception import key_down, key_up, press
+from src.common.vkeys import key_down, key_up, press
 
 
 #################################
