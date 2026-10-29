@@ -17,7 +17,6 @@ from src.command_book.command_book import CommandBook, CB_KEYBINDING_DIR, CLASSI
     CLASSIC_MODULE, CLASSIC_KEYBINDING_DIR
 from src.routine.components import Point
 from src.common.interfaces import Configurable
-from src.runesolvercore.runesolver import enterCashshop
 from src.runesolvercore.runesolver import solve_rune_raw
 
 
@@ -32,12 +31,7 @@ class Bot(Configurable):
     DEFAULT_CONFIG = {
         'NPC/Gather': 'y',
         'Feed pet': '9',
-        'Cash Shop': '`',
-        '2x EXP Buff': '7',
-        'Mushroom Buff': '8',
-        'Additional EXP Buff': '9',
-        'Gold Pot': '0',
-        'Wealth Acquisition': '-'
+        'Cash Shop': '`'
     }
 
     def __init__(self):
@@ -106,10 +100,6 @@ class Bot(Configurable):
         self.ready = True
         config.listener.enabled = True
         last_fed = time.time()
-        last_enteredCS = time.time()
-        last_2x_expbuffed = None       # 2x EXP coupon, uses the GUI interval
-        last_30m_expbuffed = None      # Mushroom, additional EXP buff and gold pot
-        last_2h_expbuffed = None       # Wealth Acquisition
 
         while True:
             if config.enabled and len(config.routine) > 0:
@@ -119,52 +109,11 @@ class Bot(Configurable):
                 auto_feed = pet_settings.auto_feed.get()
                 num_pets = pet_settings.num_pets.get()
 
-                # EXP Buff settings
-                exp_buff_settings = config.gui.settings.expbuffsettings
-                auto_buff_exp = exp_buff_settings.expbuff_use_toggle.get()
-                expbuff_use_interval = exp_buff_settings.expbuff_use_interval.get()
-
-                # CS reset settings
-                misc_settings = config.gui.settings.miscsettings
-                cs_reset_toggle = misc_settings.cs_reset_toggle.get()
-                cs_reset_interval = misc_settings.cs_reset_interval.get()
-
                 #feed pets
                 now = time.time()
                 if auto_feed and now - last_fed > 1200 / num_pets:
                     press(self.config['Feed pet'], 1)
                     last_fed = now
-
-                #buff exp buff
-                if auto_buff_exp:
-                    if last_2x_expbuffed == None or now - last_2x_expbuffed > expbuff_use_interval*900 + 10:
-                        press(self.config['2x EXP Buff'], 1)
-                        time.sleep(0.4)
-                        last_2x_expbuffed = now
-                    if last_30m_expbuffed == None or now - last_30m_expbuffed > 1800 + 10:
-                        press(self.config['Mushroom Buff'], 1)
-                        time.sleep(0.4)
-                        press(self.config['Additional EXP Buff'], 1)
-                        time.sleep(0.4)
-                        press(self.config['Gold Pot'], 1)
-                        time.sleep(0.4)
-                        last_30m_expbuffed = now
-                    if last_2h_expbuffed == None or now - last_2h_expbuffed > 7200 + 10:
-                        press(self.config['Wealth Acquisition'], 1)
-                        time.sleep(0.4)
-                        last_2h_expbuffed = now
-                    config.gui.view.monitoringconsole.set_nextexpbuffstat(str(round((expbuff_use_interval*900 - (now - last_2x_expbuffed))))+"s")
-                elif auto_buff_exp == False:
-                    config.gui.view.monitoringconsole.set_nextexpbuffstat("Disabled")
-
-                # Enter cash shop to reset DC timer
-                config.gui.view.monitoringconsole.set_nextcsresetstat(str(round((cs_reset_interval*3600 - (now - last_enteredCS))))+"s")
-                if cs_reset_toggle and now - last_enteredCS > cs_reset_interval*3600:
-                    print("Entering cash shop for reset")
-                    enterCashshop(self)
-                    last_enteredCS = now
-                elif cs_reset_toggle == False:
-                    config.gui.view.monitoringconsole.set_nextcsresetstat("Disabled")
 
                 # Highlight the current Point
                 config.gui.view.routine.select(config.routine.index)

@@ -3,8 +3,6 @@
 import tkinter as tk
 from src.gui.interfaces import KeyBindings
 from src.gui.settings.pets import Pets
-from src.gui.settings.expbuffsettings import ExpBuff
-from src.gui.settings.miscsettings import Misc
 from src.gui.interfaces import Tab, Frame
 from src.common import config
 
@@ -22,10 +20,6 @@ class Settings(Tab):
         self.controls.pack(side=tk.TOP, fill='x', expand=True)
         self.common_bindings = KeyBindings(self.column1, 'In-game Keybindings', config.bot)
         self.common_bindings.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
-        self.expbuffsettings = ExpBuff(self.column1)
-        self.expbuffsettings.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
-        self.miscsettings = Misc(self.column1)
-        self.miscsettings.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
         self.pets = Pets(self.column1)
         self.pets.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
 
