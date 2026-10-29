@@ -13,22 +13,41 @@ user32 = ctypes.windll.user32
 user32.SetProcessDPIAware()
 
 
-# The distance between the top of the minimap and the top of the screen
-MINIMAP_TOP_BORDER = 5
-
-# The thickness of the other three borders of the minimap
-MINIMAP_BOTTOM_BORDER = 9
-
 # Offset in pixels to adjust for windowed mode
 WINDOWED_OFFSET_TOP = 36
 WINDOWED_OFFSET_LEFT = 10
 
-# The top-left and bottom-right corners of the minimap
-MM_TL_TEMPLATE = cv2.imread('assets/minimap_tl_template.png', 0)
-MM_BR_TEMPLATE = cv2.imread('assets/minimap_br_template.png', 0)
 
-MMT_HEIGHT = max(MM_TL_TEMPLATE.shape[0], MM_BR_TEMPLATE.shape[0])
-MMT_WIDTH = max(MM_TL_TEMPLATE.shape[1], MM_BR_TEMPLATE.shape[1])
+class MinimapStyle:
+    """
+    A minimap frame look: templates of its top-left and bottom-right corners, the offset from
+    the top-left template's match to the minimap's top-left corner, and the offset from the
+    bottom-right template's match to the minimap's bottom-right corner.
+    """
+
+    def __init__(self, name, directory, tl_offset, br_offset, method):
+        self.name = name
+        self.tl_template = cv2.imread(f'{directory}/minimap_tl_template.png', 0)
+        self.br_template = cv2.imread(f'{directory}/minimap_br_template.png', 0)
+        self.tl_offset = tl_offset
+        self.br_offset = br_offset
+        self.method = method
+
+
+# Calibration uses whichever style's top-left corner matches the screen best
+MINIMAP_STYLES = [
+    MinimapStyle('modern', 'assets', (9, 5), (-9, -9), cv2.TM_CCOEFF),
+    MinimapStyle('old-style', 'assets/classic', (9, 11), (-9, -9), cv2.TM_CCOEFF_NORMED),
+    MinimapStyle('old-style compact', 'assets/classic_compact', (7, 11), (-6, -9), cv2.TM_CCOEFF_NORMED)
+]
+
+# Minimum normalized match score of both corners, and minimum minimap width and height (px),
+# for calibration to accept a minimap
+MINIMAP_MIN_SCORE = 0.9
+MINIMAP_MIN_SIZE = 20
+
+MMT_HEIGHT = max(t.shape[0] for s in MINIMAP_STYLES for t in (s.tl_template, s.br_template))
+MMT_WIDTH = max(t.shape[1] for s in MINIMAP_STYLES for t in (s.tl_template, s.br_template))
 
 # The player's symbol on the minimap
 PLAYER_TEMPLATE = cv2.imread('assets/player_template.png', 0)
@@ -51,6 +70,8 @@ class Capture:
         self.minimap = {}
         self.minimap_ratio = 1
         self.minimap_sample = None
+        self.minimap_style = None
+        self.warned_no_minimap = False
         self.sct = None
         self.window = {
             'left': 0,
@@ -92,16 +113,19 @@ class Capture:
                 self.frame = self.screenshot()
             if self.frame is None:
                 continue
-            tl, _ = utils.single_match(self.frame, MM_TL_TEMPLATE)
-            _, br = utils.single_match(self.frame, MM_BR_TEMPLATE)
-            mm_tl = (
-                tl[0] + MINIMAP_BOTTOM_BORDER,
-                tl[1] + MINIMAP_TOP_BORDER
-            )
-            mm_br = (
-                max(mm_tl[0] + PT_WIDTH, br[0] - MINIMAP_BOTTOM_BORDER),
-                max(mm_tl[1] + PT_HEIGHT, br[1] - MINIMAP_BOTTOM_BORDER)
-            )
+            found = find_minimap(self.frame)
+            if found is None:       # Wait for a real minimap, e.g. while another window covers the game
+                if not self.warned_no_minimap:
+                    print('\n[!] Minimap not found, make sure the game window is visible '
+                          'and not covered by other windows')
+                    self.warned_no_minimap = True
+                time.sleep(1)
+                continue
+            self.warned_no_minimap = False
+            style, mm_tl, mm_br = found
+            if style is not self.minimap_style:
+                print(f'\n[~] Detected {style.name} minimap')
+                self.minimap_style = style
             self.minimap_ratio = (mm_br[0] - mm_tl[0]) / (mm_br[1] - mm_tl[1])
             self.minimap_sample = self.frame[mm_tl[1]:mm_br[1], mm_tl[0]:mm_br[0]]
             self.calibrated = True
@@ -153,3 +177,24 @@ class Capture:
             print(f'\n[!] Error while taking screenshot, retrying in {delay} second'
                   + ('s' if delay != 1 else ''))
             time.sleep(delay)
+
+
+def find_minimap(frame):
+    """
+    Finds the minimap in FRAME using whichever minimap style's top-left corner matches best.
+    :param frame:   A screenshot of the game window.
+    :return:        A tuple of (style, top-left, bottom-right) bounds of the minimap's contents,
+                    or None if no minimap is confidently found.
+    """
+
+    style = max(MINIMAP_STYLES, key=lambda s: utils.match_score(frame, s.tl_template))
+    if min(utils.match_score(frame, style.tl_template),
+           utils.match_score(frame, style.br_template)) < MINIMAP_MIN_SCORE:
+        return None
+    tl, _ = utils.single_match(frame, style.tl_template, style.method)
+    _, br = utils.single_match(frame, style.br_template, style.method)
+    mm_tl = (tl[0] + style.tl_offset[0], tl[1] + style.tl_offset[1])
+    mm_br = (br[0] + style.br_offset[0], br[1] + style.br_offset[1])
+    if mm_br[0] < mm_tl[0] + MINIMAP_MIN_SIZE or mm_br[1] < mm_tl[1] + MINIMAP_MIN_SIZE:
+        return None
+    return style, mm_tl, mm_br

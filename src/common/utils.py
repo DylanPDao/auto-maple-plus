@@ -72,20 +72,31 @@ def separate_args(arguments):
     return args, kwargs
 
 
-def single_match(frame, template):
+def single_match(frame, template, method=cv2.TM_CCOEFF):
     """
     Finds the best match within FRAME.
     :param frame:       The image in which to search for TEMPLATE.
     :param template:    The template to match with.
+    :param method:      The OpenCV template matching method.
     :return:            The top-left and bottom-right positions of the best match.
     """
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    result = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF)
+    result = cv2.matchTemplate(gray, template, method)
     _, _, _, top_left = cv2.minMaxLoc(result)
     w, h = template.shape[::-1]
     bottom_right = (top_left[0] + w, top_left[1] + h)
     return top_left, bottom_right
+
+
+def match_score(frame, template):
+    """Returns the best normalized match score (-1 to 1) of TEMPLATE within FRAME."""
+
+    if template.shape[0] > frame.shape[0] or template.shape[1] > frame.shape[1]:
+        return -1
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    result = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF_NORMED)
+    return cv2.minMaxLoc(result)[1]
 
 
 def multi_match(frame, template, threshold=0.95):
