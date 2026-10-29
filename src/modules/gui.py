@@ -7,6 +7,7 @@ from tkinter import ttk
 from src.common import config, settings
 from src.gui import Menu, View, Edit, Settings, Notifer_Settings, Runtime_Flags, Automation_Settings
 from src.gui.menu.file import Import_Settings
+from src.gui import theme
 
 class GUI:
     DISPLAY_FRAME_RATE = 30
@@ -23,6 +24,7 @@ class GUI:
         config.gui = self
 
         self.root = tk.Tk()
+        self.style = theme.apply(self.root)     # Before building any widgets, so they're themed
         self.root.title('Auto Maple')
         icon = tk.PhotoImage(file='assets/icon.png')
         self.root.iconphoto(False, icon)
