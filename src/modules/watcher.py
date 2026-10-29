@@ -10,8 +10,6 @@ from src.routine.components import Point
 from src.common import config
 from resources import watcher_scan_table
 import mss
-from src.gui.automation.main import AutomationParams
-import src.modules.automation as automation
 
 # A rune's symbol on the minimap
 RUNE_RANGES = (
@@ -33,10 +31,6 @@ ELITE_TEMPLATE = cv2.imread('assets/elite_template.jpg', 0)
 # Rune CD Templates
 RUNE_CD1_TEMPLATE = cv2.imread('assets/runeCD.png', 0)
 RUNE_CD2_TEMPLATE = cv2.imread('assets/runeCD2.png', 0)
-
-# EXP Text as Chat Anchor
-LOGIN_SCREEN = cv2.imread('assets/Login.png',0)
-SECONDPW_SCREEN = cv2.imread('assets/2ndpwKB.png',0)
 
 class Watcher:
     def __init__(self):
@@ -194,21 +188,6 @@ class Watcher:
                 config.gui.runtime_console.runtimeFlags.update_All_Flags()
             except:
                 pass
-
-            #scans below here activate regardless of bot enabled status
-            #scan for login screens
-            loginscreen = utils.multi_match(frame, LOGIN_SCREEN, 0.7)
-            if loginscreen != []:
-                autoLoginToggle = AutomationParams('Automation Settings').get("auto_login2FA_toggle")
-                if autoLoginToggle:
-                    automation.autoLogin()
-            
-            #scan for secondPW screens
-            secondPWscreen = utils.multi_match(frame, SECONDPW_SCREEN, 0.8)
-            if secondPWscreen != []:
-                autosecondaryToggle = AutomationParams('Automation Settings').get("auto_2ndPW_toggle")
-                if autosecondaryToggle:
-                    automation.auto2ndPW()
 
             time.sleep(0.1)
 
