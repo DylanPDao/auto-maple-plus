@@ -1,5 +1,4 @@
 import time
-import src.runesolvercore.gdi_capture as gdi_capture
 from interception import press
 import numpy as np
 import cv2 as cv
@@ -7,9 +6,9 @@ import mss
 import src.common.utils as utils
 import src.common.config as config
 import math
+from src.modules.watcher import RUNE_RANGES, RUNE_TEMPLATE
 
 # DEFINE CV Variables
-RUNE_BGRA = (255, 102, 221, 255)
 INSIDE_CS_TEMPLATE = cv.imread('assets/insidecashshop.png', 0)
 CS_FAIL_TEMPLATE = cv.imread('assets/csFail.png',0)
 
@@ -125,36 +124,14 @@ def find_arrow_directions(img, debug=False):
 
     return sorted(directions, key=lambda x: x[1][1])
 
-def locate(self, *color):
-    with gdi_capture.CaptureWindow(self.hwnd) as img:
-        locations = []
-        if img is None:
-            pass
-        else:
-            # Crop the image to show only the mini-map.
-            img_cropped = img[self.left:self.right, self.top:self.bottom]
-            height, width = img_cropped.shape[0], img_cropped.shape[1]
-            # Reshape the image from 3-d to 2-d by row-major order.
-            img_reshaped = np.reshape(img_cropped, ((width * height), 4), order="C")
-            for c in color:
-                sum_x, sum_y, count = 0, 0, 0
-                # Find all index(s) of np.ndarray matching a specified BGRA tuple.
-                matches = np.where(np.all((img_reshaped == c), axis=1))[0]
-                for idx in matches:
-                    # Calculate the original (x, y) position of each matching index.
-                    sum_x += idx % width
-                    sum_y += idx // width
-                    count += 1
-                if count > 0:
-                    x_pos = sum_x / count
-        
-                    y_pos = sum_y / count
-                    locations.append((x_pos, y_pos))
-        return locations
-
 def get_rune_location(self):
-    location = locate(self,RUNE_BGRA)
-    return location[0] if len(location) > 0 else None
+    """Returns the rune's position on the current minimap, or None if no rune is visible."""
+    minimap = config.capture.minimap.get('minimap')
+    if minimap is None:
+        return None
+    filtered = utils.filter_color(minimap, RUNE_RANGES)
+    matches = utils.multi_match(filtered, RUNE_TEMPLATE, threshold=0.9)
+    return matches[0] if matches else None
 
 def enterCashshop(self):
     print("Entering Cashshop..")
@@ -182,14 +159,11 @@ def enterCashshop(self):
         press("enter", 1)
         time.sleep(2.5)
 
-def get_rune_image(win):
-        with gdi_capture.CaptureWindow(win) as img:
-            return img.copy()
-
 def solve_rune_raw(self):
     #assumes user is already at rune
     attempts = 0
     while attempts <= 3 and config.enabled == True:
+        attempts += 1
         npcChatKey = self.config['NPC/Gather']
         press(npcChatKey, 1)
         time.sleep(0.2)
@@ -219,11 +193,10 @@ def solve_rune_raw(self):
             print("Rune unidentifiable. Trying again...")
             press(npcChatKey, 1)
             time.sleep(1.5)
-            attempts += 1
-            if attempts > 3:
-                enterCashshop(self)
-                attempts = 0
-                time.sleep(0.5)
-                return False
         time.sleep(3)
+
+    # Out of attempts, so reset the rune by entering and leaving the cash shop
+    if config.enabled:
+        enterCashshop(self)
+        time.sleep(0.5)
     return False

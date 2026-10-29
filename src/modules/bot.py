@@ -34,7 +34,7 @@ class Bot(Configurable):
         '2x EXP Buff': '7',
         'Mushroom Buff': '8',
         'Additional EXP Buff': '9',
-        'Gold Pot': '10',
+        'Gold Pot': '0',
         'Wealth Acquisition': '-'
     }
 
@@ -84,8 +84,10 @@ class Bot(Configurable):
         config.listener.enabled = True
         last_fed = time.time()
         last_enteredCS = time.time()
-        last_30m_expbuffed = None
-        
+        last_2x_expbuffed = None       # 2x EXP coupon, uses the GUI interval
+        last_30m_expbuffed = None      # Mushroom, additional EXP buff and gold pot
+        last_2h_expbuffed = None       # Wealth Acquisition
+
         while True:
             if config.enabled and len(config.routine) > 0:
                 # Buff and feed pets
@@ -112,34 +114,23 @@ class Bot(Configurable):
 
                 #buff exp buff
                 if auto_buff_exp:
-                    if last_30m_expbuffed == None:
+                    if last_2x_expbuffed == None or now - last_2x_expbuffed > expbuff_use_interval*900 + 10:
                         press(self.config['2x EXP Buff'], 1)
                         time.sleep(0.4)
+                        last_2x_expbuffed = now
+                    if last_30m_expbuffed == None or now - last_30m_expbuffed > 1800 + 10:
                         press(self.config['Mushroom Buff'], 1)
                         time.sleep(0.4)
                         press(self.config['Additional EXP Buff'], 1)
                         time.sleep(0.4)
                         press(self.config['Gold Pot'], 1)
                         time.sleep(0.4)
+                        last_30m_expbuffed = now
+                    if last_2h_expbuffed == None or now - last_2h_expbuffed > 7200 + 10:
                         press(self.config['Wealth Acquisition'], 1)
                         time.sleep(0.4)
-                        last_30m_expbuffed = now
-                    config.gui.view.monitoringconsole.set_nextexpbuffstat(str(round((expbuff_use_interval*900 - (now - last_30m_expbuffed))))+"s")
-                    if now - last_30m_expbuffed > expbuff_use_interval*900 + 10:
-                        press(self.config['2x EXP Buff'], 1)
-                        time.sleep(0.2)
-                    if now - last_30m_expbuffed > 1800 + 10:
-                        press(self.config['Mushroom Buff'], 1)
-                        time.sleep(0.2)
-                        press(self.config['Additional EXP Buff'], 1)
-                        time.sleep(0.2)
-                        press(self.config['Gold Pot'], 1)
-                        time.sleep(0.2)
-                        last_30m_expbuffed = now
-                    if now - last_30m_expbuffed > 7200 + 10:
-                        press(self.config['Wealth Acquisition'], 1)
-                        time.sleep(0.2)
-                        last_30m_expbuffed = now
+                        last_2h_expbuffed = now
+                    config.gui.view.monitoringconsole.set_nextexpbuffstat(str(round((expbuff_use_interval*900 - (now - last_2x_expbuffed))))+"s")
                 elif auto_buff_exp == False:
                     config.gui.view.monitoringconsole.set_nextexpbuffstat("Disabled")
 
@@ -265,12 +256,14 @@ class Bot(Configurable):
 
     def update_submodules(self, force=False):
         """
-        Pulls updates from the submodule repositories. If FORCE is True,
-        rebuilds submodules by overwriting all local changes.
+        Syncs each submodule to the commit pinned by this repository. Upstream's
+        main branch is older than the pinned commit and lacks files this fork
+        needs (e.g. watcher_scan_table.py), so it is never used. Local changes
+        are kept unless FORCE is True, which overwrites them.
         """
 
         utils.print_separator()
-        print('[~] Retrieving latest submodules:')
+        print('[~] Syncing submodules:')
         self.submodules = []
         repo = git.Repo.init()
         with open('.gitmodules', 'r') as file:
@@ -281,24 +274,29 @@ class Bot(Configurable):
                     path = lines[i + 1].split('=')[1].strip()
                     url = lines[i + 2].split('=')[1].strip()
                     self.submodules.append(path)
+                    pinned = repo.git.rev_parse(f'HEAD:{path}')
                     try:
                         repo.git.clone(url, path)       # First time loading submodule
                         print(f" -  Initialized submodule '{path}'")
                     except git.exc.GitCommandError:
-                        sub_repo = git.Repo(path)
-                        if not force:
-                            sub_repo.git.stash()        # Save modified content
-                        sub_repo.git.fetch('origin', 'main')
-                        sub_repo.git.reset('--hard', 'FETCH_HEAD')
-                        if not force:
-                            try:                # Restore modified content
-                                sub_repo.git.checkout('stash', '--', '.')
-                                print(f" -  Updated submodule '{path}', restored local changes")
-                            except git.exc.GitCommandError:
-                                print(f" -  Updated submodule '{path}'")
-                        else:
-                            print(f" -  Rebuilt submodule '{path}'")
-                        sub_repo.git.stash('clear')
+                        pass
+                    sub_repo = git.Repo(path)
+                    try:
+                        sub_repo.git.cat_file('-e', f'{pinned}^{{commit}}')
+                    except git.exc.GitCommandError:
+                        sub_repo.git.fetch('origin', pinned)
+                    if force:
+                        sub_repo.git.reset('--hard', pinned)
+                        print(f" -  Rebuilt submodule '{path}'")
+                    elif sub_repo.head.commit.hexsha == pinned:
+                        print(f" -  Submodule '{path}' is up to date")
+                    else:
+                        try:        # Carries over local changes that don't conflict
+                            sub_repo.git.checkout(pinned)
+                            print(f" -  Updated submodule '{path}'")
+                        except git.exc.GitCommandError:
+                            print(f" !  Could not update submodule '{path}', "
+                                  f"local changes conflict with commit {pinned[:7]}")
                     i += 3
                 else:
                     i += 1

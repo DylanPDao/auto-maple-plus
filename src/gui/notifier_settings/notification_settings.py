@@ -193,8 +193,8 @@ class Notification_Settings(LabelFrame):
         self.notification_setting_root.set('player_stuck_toggle', self.playerStuckToggle.get())    
         self.notification_setting_root.set('especia_portal_notice', self.playerEspeciaNotice.get())
         self.notification_setting_root.set('especia_portal_toggle', self.playerEspeciaToggle.get())
-        self.notification_setting_root.set('char_in_town_notice', self.playerEspeciaNotice.get())
-        self.notification_setting_root.set('char_in_town_toggle', self.playerEspeciaToggle.get())
+        self.notification_setting_root.set('char_in_town_notice', self.charInTownNotice.get())
+        self.notification_setting_root.set('char_in_town_toggle', self.charInTownToggle.get())
         self.notification_setting_root.set('Suppress_All', self.notif_suppression.get())    
         self.notification_setting_root.save_config()
 

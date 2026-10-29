@@ -3,11 +3,9 @@
 from src.common import config, utils
 import time
 from datetime import datetime
-import os
 import cv2
 import threading
 import numpy as np
-import keyboard as kb
 from src.routine.components import Point
 from src.common import config
 from resources import watcher_scan_table
@@ -40,13 +38,7 @@ RUNE_CD2_TEMPLATE = cv2.imread('assets/runeCD2.png', 0)
 LOGIN_SCREEN = cv2.imread('assets/Login.png',0)
 SECONDPW_SCREEN = cv2.imread('assets/2ndpwKB.png',0)
 
-def get_alert_path(name):
-    return os.path.join(Watcher.ALERTS_DIR, f'{name}.mp3')
-
-
 class Watcher:
-    ALERTS_DIR = os.path.join('assets', 'alerts')
-
     def __init__(self):
         self.ready = False
         self.thread = threading.Thread(target=self._main)
@@ -67,9 +59,14 @@ class Watcher:
         rune_start_time = time.time()
         std = watcher_scan_table.scan_table_dynamic
         detectionTable = {}
+        scanTemplates = {}
         for scanEntry in std:
             detectionTable[scanEntry] = ""
+            scanTemplates[scanEntry] = cv2.imread("assets/"+std[scanEntry].get("ImgName"),0)
         sts = watcher_scan_table.scan_table_static
+        dc_params = sts["MaplestoryDC"]
+        dcImgNames = sorted(set(v for k, v in dc_params.items() if k.startswith("ImgName")))
+        dcTemplates = [cv2.imread("assets/"+name,0) for name in dcImgNames]
         charLocation_Last = None
 
         while True:
@@ -123,7 +120,7 @@ class Watcher:
                 for scanEntry in std:
                     params = std[scanEntry]
                     flagname = params.get("flag")
-                    target = cv2.imread("assets/"+params.get("ImgName"),0)
+                    target = scanTemplates[scanEntry]
                     matchCount = utils.multi_match(frame=frame, template=target, threshold=0.8)                   
                     if params.get("Invert") == "False":
                         if matchCount != []:
@@ -148,6 +145,11 @@ class Watcher:
                         else:
                             detectionTable[scanEntry] = ""
                             setattr(config,flagname,False)
+
+                #scan for disconnect screens
+                config.game_disconnected = any(
+                    utils.multi_match(frame, template, threshold=0.8) != [] for template in dcTemplates
+                )
 
                 #scan for chat
                 try:
@@ -209,31 +211,6 @@ class Watcher:
                     automation.auto2ndPW()
 
             time.sleep(0.1)
-
-
-    def _alert(self, name, volume=0.75):
-        """
-        Plays an alert to notify user of a dangerous event. Stops the alert
-        once the key bound to 'Start/stop' is pressed.
-        """
-
-        config.enabled = False
-        config.listener.enabled = False
-        self.mixer.load(get_alert_path(name))
-        self.mixer.set_volume(volume)
-        self.mixer.play(-1)
-        while not kb.is_pressed(config.listener.config['Start/stop']):
-            time.sleep(0.1)
-        self.mixer.stop()
-        time.sleep(2)
-        config.listener.enabled = True
-
-    def _ping(self, name, volume=0.5):
-        """A quick notification for non-dangerous events."""
-
-        self.mixer.load(get_alert_path(name))
-        self.mixer.set_volume(volume)
-        self.mixer.play()
 
 
 #################################
