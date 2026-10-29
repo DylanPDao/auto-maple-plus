@@ -35,6 +35,15 @@ HP_BAR_X = (511, 616)
 MP_BAR_X = (619, 724)
 BAR_ROW_FROM_BOTTOM = 21
 
+# Movement, in minimap-relative units and seconds
+MOVE_TOLERANCE = 0.02       # How close in x a Move gets to its Point
+STUCK_TIME = 1.0            # Time without getting closer before jumping, then giving up
+CLIMB_TIMEOUT = 10          # Longest a single climb or drop may take
+MAX_CLIMB_STALLS = 4        # Jumps tried while not moving up or down before giving up
+
+# A swing's length; the game ignores attack presses made during a swing
+SWING_TIME = 0.75
+
 
 #########################
 #        Helpers        #
@@ -75,75 +84,112 @@ def use_potions():
             last_potion[kind] = now
 
 
-def vertical_step(direction):
+def walk_to_x(x, tolerance):
     """
-    Moves one step up or down while Auto Maple holds DIRECTION. Holding the arrow climbs a rope
-    or ladder the player is on; if the player isn't moving, jumps instead, which grabs a rope
-    above when going up and drops through the platform when going down.
+    Walks left or right until the player is within TOLERANCE of X. Jumps once if the player
+    stops getting closer (e.g. a step or slope in the way), and gives up if that doesn't help.
     """
 
-    start = config.player_pos[1]
-    time.sleep(0.3)
-    moved = config.player_pos[1] - start
-    if (direction == 'up' and moved > -0.005) or (direction == 'down' and moved < 0.005):
-        press(Key.JUMP, 1)
-        time.sleep(0.4)
+    d_x = x - config.player_pos[0]
+    if abs(d_x) <= tolerance:
+        return
+    direction = 'right' if d_x > 0 else 'left'
+    sign = 1 if d_x > 0 else -1
+    best = abs(d_x)
+    last_progress = time.time()
+    jumped = False
+    key_down(direction)
+    try:
+        while config.enabled:
+            use_potions()
+            remaining = (x - config.player_pos[0]) * sign
+            if remaining <= tolerance:
+                break
+            now = time.time()
+            if remaining < best - 0.002:
+                best = remaining
+                last_progress = now
+                jumped = False
+            elif now - last_progress > STUCK_TIME:
+                if jumped:
+                    break
+                press(Key.JUMP, 1)
+                jumped = True
+                last_progress = now
+            time.sleep(0.05)
+    finally:
+        key_up(direction)
+
+
+def change_height(y):
+    """
+    Climbs or drops toward height Y. Holding up or down climbs a rope or ladder the player is
+    on; whenever the player isn't moving, jumps instead, which grabs a rope above when going up
+    and drops through the platform when going down.
+    """
+
+    direction = 'up' if y < config.player_pos[1] else 'down'
+    sign = -1 if direction == 'up' else 1
+    stalls = 0
+    deadline = time.time() + CLIMB_TIMEOUT
+    key_down(direction)
+    try:
+        last = config.player_pos[1]
+        while config.enabled and time.time() < deadline and stalls < MAX_CLIMB_STALLS:
+            if (y - config.player_pos[1]) * sign <= settings.move_tolerance / 2:
+                break
+            time.sleep(0.3)
+            if (config.player_pos[1] - last) * sign < 0.003:
+                stalls += 1
+                press(Key.JUMP, 1)
+                time.sleep(0.5)
+            last = config.player_pos[1]
+    finally:
+        key_up(direction)
+
+
+def go_to(target, tolerance, attempts):
+    """
+    Walks across to TARGET's x, then climbs or drops only if its height really differs (so walking
+    up or down a slope isn't mistaken for a level change), repeating up to ATTEMPTS times.
+    """
+
+    for _ in range(attempts):
+        if not config.enabled:
+            return
+        walk_to_x(target[0], tolerance)
+        if abs(target[1] - config.player_pos[1]) <= settings.move_tolerance:
+            if abs(target[0] - config.player_pos[0]) <= tolerance:
+                return
+        else:
+            change_height(target[1])
 
 
 #########################
 #       Commands        #
 #########################
-def step(direction, target):
-    """
-    Performs one movement step in the given DIRECTION towards TARGET.
-    Should not press any arrow keys, as those are handled by Auto Maple.
-    """
+class Move(Command):
+    """Walks to a position: across to its x, then up or down to its height if needed."""
 
-    use_potions()
-    if direction in ('up', 'down'):
-        vertical_step(direction)
-    else:
-        if target[1] - config.player_pos[1] < -settings.move_tolerance:
-            press(Key.JUMP, 1)          # Target is higher, jump while walking
-        time.sleep(0.3)
-
-
-class Adjust(Command):
-    """Fine-tunes player position using small movements."""
-
-    def __init__(self, x, y, max_steps=5):
+    def __init__(self, x, y, max_steps=3):
         super().__init__(locals())
         self.target = (float(x), float(y))
         self.max_steps = settings.validate_nonnegative_int(max_steps)
 
     def main(self):
-        counter = self.max_steps
-        toggle = True
-        threshold = settings.adjust_tolerance / 2 ** 0.5
-        while config.enabled and counter > 0 and \
-                max(abs(self.target[0] - config.player_pos[0]),
-                    abs(self.target[1] - config.player_pos[1])) > threshold:
-            if toggle:
-                d_x = self.target[0] - config.player_pos[0]
-                if abs(d_x) > threshold:
-                    direction = 'left' if d_x < 0 else 'right'
-                    key_down(direction)
-                    walk_counter = 0
-                    while config.enabled and walk_counter < 60 and \
-                            (self.target[0] - config.player_pos[0]) * (1 if d_x > 0 else -1) > threshold:
-                        time.sleep(0.05)
-                        walk_counter += 1
-                    key_up(direction)
-                    counter -= 1
-            else:
-                d_y = self.target[1] - config.player_pos[1]
-                if abs(d_y) > threshold:
-                    direction = 'up' if d_y < 0 else 'down'
-                    key_down(direction)
-                    vertical_step(direction)
-                    key_up(direction)
-                    counter -= 1
-            toggle = not toggle
+        go_to(self.target, MOVE_TOLERANCE, max(1, self.max_steps))
+
+
+class Adjust(Command):
+    """Fine-tunes player position after a Move."""
+
+    def __init__(self, x, y, max_steps=3):
+        super().__init__(locals())
+        self.target = (float(x), float(y))
+        self.max_steps = settings.validate_nonnegative_int(max_steps)
+
+    def main(self):
+        go_to(self.target, settings.adjust_tolerance, max(1, self.max_steps))
 
 
 class Buff(Command):
@@ -185,7 +231,7 @@ def attack(key, direction, times):
     for _ in range(times):
         use_potions()
         press(key, 1)
-        time.sleep(0.5)                         # Let the swing finish
+        time.sleep(SWING_TIME)                  # Let the swing finish
 
 
 class PickUp(Command):
