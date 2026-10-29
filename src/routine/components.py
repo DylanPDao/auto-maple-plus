@@ -354,10 +354,19 @@ class Fall(Command):
         while config.enabled and \
                 counter > 0 and \
                 utils.distance(start, config.player_pos) < self.distance:
-            press('space', 1, down_time=0.1)
+            press(jump_key(), 1, down_time=0.1)
             counter -= 1
         key_up('down')
         time.sleep(0.05)
+
+
+def jump_key():
+    """Returns the current command book's JUMP key, or 'space' if it doesn't define one."""
+
+    command_book = config.bot.command_book
+    if command_book is not None and hasattr(command_book.module.Key, 'JUMP'):
+        return command_book.module.Key.JUMP
+    return 'space'
 
 
 class Buff(Command):
