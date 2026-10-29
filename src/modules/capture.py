@@ -36,7 +36,6 @@ class MinimapStyle:
 
 # Calibration uses whichever style's top-left corner matches the screen best
 MINIMAP_STYLES = [
-    MinimapStyle('modern', 'assets', (9, 5), (-9, -9), cv2.TM_CCOEFF),
     MinimapStyle('old-style', 'assets/classic', (9, 11), (-9, -9), cv2.TM_CCOEFF_NORMED),
     MinimapStyle('old-style compact', 'assets/classic_compact', (7, 11), (-6, -9), cv2.TM_CCOEFF_NORMED)
 ]
