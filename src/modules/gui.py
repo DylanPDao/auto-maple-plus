@@ -90,22 +90,16 @@ class GUI:
         layout_thread.daemon = True
         layout_thread.start()
 
-        # Load previously used config
-        print("[~] Attempting to load last used command book and routine")
-        import_root = Import_Settings("CBR")
-        last_cb = import_root.get("last_cb")
-        last_routine = import_root.get("last_routine")
-        if last_cb != None:
-            print()
+        # Load the built-in classic commands and the last used routine
+        print()
+        config.bot.load_classic_commands()
+        last_routine = Import_Settings("CBR").get("last_routine")
+        if last_routine is not None and config.bot.command_book is not None:
             try:
-                config.bot.load_commands(last_cb)
-                if last_routine != None:
-                   config.routine.load(last_routine)
-            except:
-                pass
-        else:
-            print("[!] Last loaded command book not found)")
-            
+                config.routine.load(last_routine)
+            except Exception:
+                print(f"[!] Could not load last used routine '{last_routine}'")
+
         self.root.mainloop()
 
     def _display_minimap(self):

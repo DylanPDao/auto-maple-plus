@@ -22,7 +22,6 @@ class File(MenuBarItem):
             state=tk.DISABLED
         )
         self.add_separator()
-        self.add_command(label='Load Command Book', command=utils.async_callback(self, File._load_commands))
         self.add_command(
             label='Load Routine',
             command=utils.async_callback(self, File._load_routine),
@@ -71,26 +70,6 @@ class File(MenuBarItem):
             config.routine.load(file_path)
             import_root = Import_Settings("CBR")
             import_root.set("last_routine",file_path)
-            import_root.save_config()
-
-            
-
-    @staticmethod
-    @utils.run_if_disabled('\n[!] Cannot load command books while Auto Maple is enabled')
-    def _load_commands():
-        if config.routine.dirty:
-            if not askyesno(title='Load Command Book',
-                            message='Loading a new command book will discard the current routine, '
-                                    'which has unsaved changes. Would you like to proceed anyways?',
-                            icon='warning'):
-                return
-        file_path = askopenfilename(initialdir=os.path.join(config.RESOURCES_DIR, 'command_books'),
-                                    title='Select a command book',
-                                    filetypes=[('*.py', '*.py')])
-        if file_path:
-            config.bot.load_commands(file_path)
-            import_root = Import_Settings("CBR")
-            import_root.set("last_cb",file_path)
             import_root.save_config()
 
 def get_routines_dir():

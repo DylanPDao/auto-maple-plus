@@ -12,7 +12,8 @@ from os.path import splitext, basename
 from src.common import config, utils
 from src.routine import components
 from src.routine.routine import Routine
-from src.command_book.command_book import CommandBook
+from src.command_book.command_book import CommandBook, CB_KEYBINDING_DIR, CLASSIC_FILE, \
+    CLASSIC_MODULE, CLASSIC_KEYBINDING_DIR
 from src.routine.components import Point
 from src.common.interfaces import Configurable
 from src.runesolvercore.runesolver import enterCashshop
@@ -176,12 +177,17 @@ class Bot(Configurable):
         solve_rune_raw(self)
         self.rune_active = False
 
-    def load_commands(self, file):
+    def load_commands(self, file, module=None, keybinding_dir=CB_KEYBINDING_DIR):
         try:
-            self.command_book = CommandBook(file)
+            self.command_book = CommandBook(file, module, keybinding_dir)
             config.gui.settings.update_class_bindings()
         except ValueError:
             pass    # TODO: UI warning popup, say check cmd for errors
+
+    def load_classic_commands(self):
+        """Loads the built-in classic command book."""
+
+        self.load_commands(CLASSIC_FILE, CLASSIC_MODULE, CLASSIC_KEYBINDING_DIR)
         #
         # utils.print_separator()
         # print(f"[~] Loading command book '{basename(file)}':")

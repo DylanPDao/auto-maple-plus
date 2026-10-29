@@ -10,19 +10,29 @@ from src.common.interfaces import Configurable
 
 CB_KEYBINDING_DIR = os.path.join('resources', 'keybindings')
 
+# The built-in classic command book: its file, module and where its keybindings are saved
+CLASSIC_FILE = os.path.join('src', 'command_book', 'classic.py')
+CLASSIC_MODULE = 'src.command_book.classic'
+CLASSIC_KEYBINDING_DIR = '.settings'
+
 
 class CommandBook(Configurable):
-    def __init__(self, file):
+    def __init__(self, file, module=None, keybinding_dir=CB_KEYBINDING_DIR):
+        """
+        Loads the command book at FILE, importing it from MODULE if given, otherwise from
+        resources/command_books. Keybindings are saved in KEYBINDING_DIR.
+        """
+
         self.name = splitext(basename(file))[0]
         self.buff = components.Buff()
         self.DEFAULT_CONFIG = {}
-        result = self.load_commands(file)
+        result = self.load_commands(file, module)
         if result is None:
             raise ValueError(f"Invalid command book at '{file}'")
         self.dict, self.module = result
-        super().__init__(self.name, directory=CB_KEYBINDING_DIR)
-        
-    def load_commands(self, file):
+        super().__init__(self.name, directory=keybinding_dir)
+
+    def load_commands(self, file, module=None):
         """Prompts the user to select a command module to import. Updates config's command book."""
 
         utils.print_separator()
@@ -39,7 +49,7 @@ class CommandBook(Configurable):
             new_cb[c.__name__.lower()] = c
 
         # Import the desired command book file
-        target = '.'.join(['resources', 'command_books', self.name])
+        target = module or '.'.join(['resources', 'command_books', self.name])
         try:
             module = importlib.import_module(target)
             module = importlib.reload(module)
