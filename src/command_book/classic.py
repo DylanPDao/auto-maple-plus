@@ -44,6 +44,9 @@ MAX_CLIMB_STALLS = 4        # Jumps tried while not moving up or down before giv
 # A swing's length; the game ignores attack presses made during a swing
 SWING_TIME = 0.75
 
+# Seconds spent walking forward over the drops after attacking with loot=True
+LOOT_SWEEP_TIME = 1.0
+
 
 #########################
 #        Helpers        #
@@ -200,29 +203,41 @@ class Buff(Command):
 
 
 class Attack(Command):
-    """Attacks with the basic attack, facing DIRECTION first if one is given."""
+    """
+    Attacks with the basic attack, facing DIRECTION first if one is given. With LOOT, then
+    sweeps forward picking up the drops.
+    """
 
-    def __init__(self, direction=None, attacks=1, repetitions=1):
+    def __init__(self, direction=None, attacks=1, repetitions=1, loot='False'):
         super().__init__(locals())
         self.direction = None if direction is None else settings.validate_horizontal_arrows(direction)
         self.attacks = int(attacks)
         self.repetitions = int(repetitions)
+        self.loot = settings.validate_boolean(loot)
 
     def main(self):
         attack(Key.ATTACK, self.direction, self.attacks * self.repetitions)
+        if self.loot:
+            sweep(self.direction, LOOT_SWEEP_TIME)
 
 
 class Skill(Command):
-    """Attacks with the skill key (e.g. Power Strike), facing DIRECTION first if one is given."""
+    """
+    Attacks with the skill key (e.g. Power Strike), facing DIRECTION first if one is given.
+    With LOOT, then sweeps forward picking up the drops.
+    """
 
-    def __init__(self, direction=None, attacks=1, repetitions=1):
+    def __init__(self, direction=None, attacks=1, repetitions=1, loot='False'):
         super().__init__(locals())
         self.direction = None if direction is None else settings.validate_horizontal_arrows(direction)
         self.attacks = int(attacks)
         self.repetitions = int(repetitions)
+        self.loot = settings.validate_boolean(loot)
 
     def main(self):
         attack(Key.SKILL, self.direction, self.attacks * self.repetitions)
+        if self.loot:
+            sweep(self.direction, LOOT_SWEEP_TIME)
 
 
 def attack(key, direction, times):
@@ -234,15 +249,40 @@ def attack(key, direction, times):
         time.sleep(SWING_TIME)                  # Let the swing finish
 
 
-class PickUp(Command):
-    """Picks up items under the player."""
+def sweep(direction, duration):
+    """
+    Walks in DIRECTION for DURATION seconds tapping the pick up key, collecting the drops of
+    monsters killed in front of the player. Without a direction, only loots in place.
+    """
 
-    def __init__(self, presses=3):
+    if direction:
+        key_down(direction)
+        try:
+            end = time.time() + duration
+            while config.enabled and time.time() < end:
+                press(Key.PICK_UP, 1, down_time=0.05, up_time=0.1)
+        finally:
+            key_up(direction)
+    press(Key.PICK_UP, 3, up_time=0.15)         # Whatever is under the player now
+
+
+class PickUp(Command):
+    """
+    Picks up items under the player. With a DIRECTION, first walks that way for DURATION
+    seconds tapping the pick up key, collecting drops along the way.
+    """
+
+    def __init__(self, presses=3, direction=None, duration=LOOT_SWEEP_TIME):
         super().__init__(locals())
         self.presses = int(presses)
+        self.direction = None if direction is None else settings.validate_horizontal_arrows(direction)
+        self.duration = float(duration)
 
     def main(self):
-        press(Key.PICK_UP, self.presses, up_time=0.15)
+        if self.direction:
+            sweep(self.direction, self.duration)
+        else:
+            press(Key.PICK_UP, self.presses, up_time=0.15)
 
 
 class HpPotion(Command):
