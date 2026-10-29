@@ -1,8 +1,7 @@
-"""A menu for loading routines and command books."""
+"""A menu for loading routines."""
 
 import tkinter as tk
 from src.gui.menu.file import File
-from src.gui.menu.update import Update
 
 
 class Menu(tk.Menu):
@@ -10,4 +9,3 @@ class Menu(tk.Menu):
         super().__init__(parent, **kwargs)
 
         self.file = File(self, tearoff=0)
-        self.update = Update(self, tearoff=0)

@@ -3,3 +3,5 @@ assets/models/
 .idea/
 .settings/
 *.iml
+recordings/
+resources/layouts/

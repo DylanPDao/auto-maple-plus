@@ -2,7 +2,6 @@
 
 import threading
 import time
-import git
 import cv2
 import inspect
 import importlib
@@ -43,7 +42,6 @@ class Bot(Configurable):
         self.rune_active = False
         self.rune_pos = (0, 0)
         self.rune_closest_pos = (0, 0)      # Location of the Point closest to rune
-        self.submodules = []
         self.command_book = None            # CommandBook instance
         # self.module_name = None
         # self.buff = components.Buff()
@@ -67,7 +65,6 @@ class Bot(Configurable):
         :return:    None
         """
 
-        self.update_submodules()
         print('\n[~] Started main bot loop')
         self.thread.start()
 
@@ -230,50 +227,3 @@ class Bot(Configurable):
         #     print(f" ~  Successfully loaded command book '{module_name}'")
         # else:
         #     print(f" !  Command book '{module_name}' was not loaded")
-
-    def update_submodules(self, force=False):
-        """
-        Syncs each submodule to the commit pinned by this repository. Upstream's
-        main branch is older than the pinned commit and lacks files this fork
-        needs (e.g. watcher_scan_table.py), so it is never used. Local changes
-        are kept unless FORCE is True, which overwrites them.
-        """
-
-        utils.print_separator()
-        print('[~] Syncing submodules:')
-        self.submodules = []
-        repo = git.Repo.init()
-        with open('.gitmodules', 'r') as file:
-            lines = file.readlines()
-            i = 0
-            while i < len(lines):
-                if lines[i].startswith('[') and i < len(lines) - 2:
-                    path = lines[i + 1].split('=')[1].strip()
-                    url = lines[i + 2].split('=')[1].strip()
-                    self.submodules.append(path)
-                    pinned = repo.git.rev_parse(f'HEAD:{path}')
-                    try:
-                        repo.git.clone(url, path)       # First time loading submodule
-                        print(f" -  Initialized submodule '{path}'")
-                    except git.exc.GitCommandError:
-                        pass
-                    sub_repo = git.Repo(path)
-                    try:
-                        sub_repo.git.cat_file('-e', f'{pinned}^{{commit}}')
-                    except git.exc.GitCommandError:
-                        sub_repo.git.fetch('origin', pinned)
-                    if force:
-                        sub_repo.git.reset('--hard', pinned)
-                        print(f" -  Rebuilt submodule '{path}'")
-                    elif sub_repo.head.commit.hexsha == pinned:
-                        print(f" -  Submodule '{path}' is up to date")
-                    else:
-                        try:        # Carries over local changes that don't conflict
-                            sub_repo.git.checkout(pinned)
-                            print(f" -  Updated submodule '{path}'")
-                        except git.exc.GitCommandError:
-                            print(f" !  Could not update submodule '{path}', "
-                                  f"local changes conflict with commit {pinned[:7]}")
-                    i += 3
-                else:
-                    i += 1
