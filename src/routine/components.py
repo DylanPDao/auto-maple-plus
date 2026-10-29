@@ -243,7 +243,10 @@ class Move(Command):
 
     def main(self):
         counter = self.max_steps
-        path = config.layout.shortest_path(config.player_pos, self.target)
+        if config.layout is None:       # Routine built in the editor and never loaded from a file
+            path = [self.target]
+        else:
+            path = config.layout.shortest_path(config.player_pos, self.target)
         for i, point in enumerate(path):
             toggle = True
             self.prev_direction = ''
@@ -261,7 +264,7 @@ class Move(Command):
                             key = 'right'
                         self._new_direction(key)
                         step(key, point)
-                        if settings.record_layout:
+                        if settings.record_layout and config.layout is not None:
                             config.layout.add(*config.player_pos)
                         counter -= 1
                         if i < len(path) - 1:
@@ -275,7 +278,7 @@ class Move(Command):
                             key = 'down'
                         self._new_direction(key)
                         step(key, point)
-                        if settings.record_layout:
+                        if settings.record_layout and config.layout is not None:
                             config.layout.add(*config.player_pos)
                         counter -= 1
                         if i < len(path) - 1:

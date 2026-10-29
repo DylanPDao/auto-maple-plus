@@ -8,6 +8,7 @@ import inspect
 import importlib
 import traceback
 from interception import press
+from src.common.vkeys import key_up
 from os.path import splitext, basename
 from src.common import config, utils
 from src.routine import components
@@ -63,7 +64,7 @@ class Bot(Configurable):
         self.hwnd = None
 
         self.ready = False
-        self.thread = threading.Thread(target=self._main)
+        self.thread = threading.Thread(target=self._run)
         self.thread.daemon = True
 
     def start(self):
@@ -75,6 +76,27 @@ class Bot(Configurable):
         self.update_submodules()
         print('\n[~] Started main bot loop')
         self.thread.start()
+
+    def _run(self):
+        """
+        Runs the main loop, and if it crashes, prints the error and disables the bot instead of
+        leaving it shown as enabled with nothing running. The loop then restarts.
+        """
+
+        while True:
+            try:
+                self._main()
+            except Exception:
+                traceback.print_exc()
+                print('\n[!] The bot hit an error and was disabled, see above')
+                config.enabled = False
+                for key in ('left', 'right', 'up', 'down'):     # Don't leave a held key stuck down
+                    key_up(key)
+                try:
+                    config.gui.view.monitoringconsole.set_enabledstat(False)
+                except Exception:
+                    pass
+                time.sleep(1)
 
     def _main(self):
         """
