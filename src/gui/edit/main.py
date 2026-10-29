@@ -6,6 +6,7 @@ import tkinter as tk
 from src.routine.components import Point, Command
 from src.gui.edit.minimap import Minimap
 from src.gui.edit.record import Record
+from src.gui.edit.paths import Paths
 from src.gui.edit.routine import Routine
 from src.gui.edit.status import Status
 from src.gui.interfaces import Tab, Frame, LabelFrame
@@ -21,6 +22,9 @@ class Edit(Tab):
         self.record = Record(self)
         self.record.grid(row=2, column=3, sticky=tk.NSEW, padx=10, pady=10)
 
+        self.paths = Paths(self)
+        self.paths.grid(row=3, column=3, sticky=tk.NSEW, padx=10, pady=(0, 10))
+
         self.minimap = Minimap(self)
         self.minimap.grid(row=0, column=3, sticky=tk.NSEW, padx=10, pady=10)
 
@@ -28,10 +32,10 @@ class Edit(Tab):
         self.status.grid(row=1, column=3, sticky=tk.NSEW, padx=10, pady=10)
 
         self.routine = Routine(self)
-        self.routine.grid(row=0, column=1, rowspan=3, sticky=tk.NSEW, padx=10, pady=10)
+        self.routine.grid(row=0, column=1, rowspan=4, sticky=tk.NSEW, padx=10, pady=10)
 
         self.editor = Editor(self)
-        self.editor.grid(row=0, column=2, rowspan=3, sticky=tk.NSEW, padx=10, pady=10)
+        self.editor.grid(row=0, column=2, rowspan=4, sticky=tk.NSEW, padx=10, pady=10)
 
 
 class Editor(LabelFrame):

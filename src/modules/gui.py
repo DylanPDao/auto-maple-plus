@@ -5,7 +5,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 from src.common import config, settings
-from src.gui import Menu, View, Edit, Settings, Notifer_Settings, Runtime_Flags, Automation_Settings
+from src.gui import Menu, View, Edit, Settings, Notifer_Settings, Runtime_Flags, Automation_Settings, Monsters
 from src.gui.menu.file import Import_Settings
 from src.gui import theme
 
@@ -13,8 +13,9 @@ class GUI:
     DISPLAY_FRAME_RATE = 30
     RESOLUTIONS = {
         'DEFAULT': '800x800',
-        'Edit': '1300x750',
+        'Edit': '1300x920',
         'Settings': '750x850',
+        'Combat': '1600x840',
         'Notifier': '600x775',
         'Monitoring': '400x575',
         'Automation': '400x525'
@@ -43,6 +44,7 @@ class GUI:
         self.view = View(self.navigation)
         self.edit = Edit(self.navigation)
         self.settings = Settings(self.navigation)
+        self.monsters = Monsters(self.navigation)
         self.watcher_settings = Notifer_Settings(self.navigation)
         self.runtime_console = Runtime_Flags(self.navigation)
         self.automation_settings = Automation_Settings(self.navigation)

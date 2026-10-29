@@ -1,6 +1,7 @@
 """A module for detecting and notifying the user of dangerous in-game events."""
 
 from src.common import config, utils
+import os
 import time
 from datetime import datetime
 import cv2
@@ -8,6 +9,7 @@ import threading
 import numpy as np
 from src.routine.components import Point
 from src.common import config
+from src.modules.combat import TOWN_MARKER_PATH
 from resources import watcher_scan_table
 import mss
 
@@ -32,6 +34,7 @@ ELITE_TEMPLATE = cv2.imread('assets/elite_template.jpg', 0)
 RUNE_CD1_TEMPLATE = cv2.imread('assets/runeCD.png', 0)
 RUNE_CD2_TEMPLATE = cv2.imread('assets/runeCD2.png', 0)
 
+
 class Watcher:
     def __init__(self):
         self.ready = False
@@ -47,6 +50,18 @@ class Watcher:
         """Starts this Watcher's thread."""
         print('\n[~] Started watcher')
         self.thread.start()
+
+    def _town_marker(self):
+        """Returns the town marker template, re-reading it when the file changes, or None."""
+
+        if not os.path.isfile(TOWN_MARKER_PATH):
+            self.town_marker = None
+            return None
+        mtime = os.path.getmtime(TOWN_MARKER_PATH)
+        if getattr(self, 'town_marker_mtime', None) != mtime:
+            self.town_marker = cv2.imread(TOWN_MARKER_PATH, 0)
+            self.town_marker_mtime = mtime
+        return self.town_marker
 
     def _main(self):
         self.ready = True
@@ -70,6 +85,10 @@ class Watcher:
 
             #scans in this section only activate if bot is enabled
             if config.enabled:
+                # Check for being in town, using the marker saved from the Combat tab
+                town = self._town_marker()
+                config.char_in_town = town is not None and utils.multi_match(frame, town, threshold=0.85) != []
+
                 # Check for rune CD
                 runeCD1 = utils.multi_match(frame, RUNE_CD1_TEMPLATE, threshold=0.85)
                 runeCD2 = utils.multi_match(frame, RUNE_CD2_TEMPLATE, threshold=0.85)

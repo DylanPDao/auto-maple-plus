@@ -226,6 +226,9 @@ class Routine:
         config.layout = Layout.load(file)
         config.gui.view.status.set_routine(basename(file))
         config.gui.edit.minimap.draw_default()
+        if config.bot.combat.use_set_for_routine(file):
+            config.gui.monsters.refresh()
+        config.bot.hunt.reset()
         print(f" ~  Finished loading routine '{basename(splitext(file)[0])}'.")
 
     def compile(self, file):

@@ -16,6 +16,10 @@ from src.command_book.command_book import CommandBook, CB_KEYBINDING_DIR, CLASSI
     CLASSIC_MODULE, CLASSIC_KEYBINDING_DIR
 from src.routine.components import Point
 from src.common.interfaces import Configurable
+from src.modules.combat import Combat
+from src.modules.antiban import AntiBan
+from src.modules.hunt import HuntPlanner
+from src.modules.paths import PathRecorder
 from src.runesolvercore.runesolver import solve_rune_raw
 
 
@@ -43,6 +47,10 @@ class Bot(Configurable):
         self.rune_pos = (0, 0)
         self.rune_closest_pos = (0, 0)      # Location of the Point closest to rune
         self.command_book = None            # CommandBook instance
+        self.combat = Combat()              # Fights monsters between routine Points
+        self.antiban = AntiBan()            # Breaks and human-like pauses
+        self.hunt = HuntPlanner()           # Picks the next Point in hunt movement
+        self.paths = PathRecorder()         # Records movement paths taught by the player
         # self.module_name = None
         # self.buff = components.Buff()
 
@@ -100,6 +108,13 @@ class Bot(Configurable):
 
         while True:
             if config.enabled and len(config.routine) > 0:
+                if self.antiban.tick():
+                    continue
+                if self.combat.rest_if_needed():        # Pot save mode: rest at low HP
+                    continue
+                if self._pause_in_town():
+                    continue
+
                 # Buff and feed pets
                 self.command_book.buff.main()
                 pet_settings = config.gui.settings.pets
@@ -117,15 +132,44 @@ class Bot(Configurable):
                 config.gui.view.details.display_info(config.routine.index)
 
                 # Execute next Point in the routine
-                element = config.routine[config.routine.index]
+                index = config.routine.index
+                element = config.routine[index]
+                kills = self.combat.kills
+                if isinstance(element, Point):
+                    self.combat.engage()
                 if config.rune_cd == False:
                     if self.rune_active and isinstance(element, Point) \
                             and element.location == self.rune_closest_pos:
                         self._solve_rune()
                 element.execute()
-                config.routine.step()
+                if self.combat.config['movement'] == 'hunt' and isinstance(element, Point):
+                    # Hunt: go next wherever monsters have been found and it's been a while
+                    self.hunt.record(index, self.combat.kills - kills)
+                    if config.enabled:
+                        config.routine.index = self.hunt.next_index(config.routine, index)
+                else:
+                    config.routine.step()
             else:
                 time.sleep(0.01)
+
+    @staticmethod
+    def _pause_in_town():
+        """
+        Stops the bot when the town marker is on screen and 'Auto pause in town' is on, whether
+        or not Discord notifications are set up.
+        :return:    Whether the bot was stopped.
+        """
+
+        try:
+            wanted = config.gui.automation_settings.automationSettings.auto_pause_in_town_toggle.get()
+        except AttributeError:
+            return False
+        if not (config.char_in_town and wanted):
+            return False
+        print('\n[!] In town, pausing the bot')
+        config.enabled = False
+        config.gui.view.monitoringconsole.set_enabledstat(False)
+        return True
 
     @utils.run_if_enabled
     def _solve_rune(self):

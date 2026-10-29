@@ -21,7 +21,7 @@ class Configurable:
         if os.path.isfile(path):
             with open(path, 'rb') as file:
                 loaded = pickle.load(file)
-                self.config = {key: loaded.get(key, '') for key in self.DEFAULT_CONFIG}
+                self.config = {key: loaded.get(key, default) for key, default in self.DEFAULT_CONFIG.items()}
         else:
             self.save_config()
 

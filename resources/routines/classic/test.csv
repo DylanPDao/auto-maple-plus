@@ -1,2 +1,7 @@
+*, x=0.471, y=0.341, frequency=1, skip=False, adjust=False
+    DropDown, attempts=2
+*, x=0.106, y=0.347, frequency=1, skip=False, adjust=False
+    DropDown, attempts=2
+*, x=0.706, y=0.459, frequency=1, skip=False, adjust=False
 *, x=0.029, y=0.565, frequency=1, skip=False, adjust=False
-*, x=0.753, y=0.435, frequency=1, skip=False, adjust=False
+*, x=0.641, y=0.400, frequency=1, skip=False, adjust=False

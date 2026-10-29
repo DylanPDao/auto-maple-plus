@@ -5,6 +5,7 @@ import src.gui.settings.main as settings
 import src.gui.notifier_settings.main as notifier_settings
 import src.gui.runtime.main as runtime
 import src.gui.automation.main as automation
+import src.gui.monsters.main as monsters
 
 Menu = menu.Menu
 View = view.View
@@ -13,3 +14,4 @@ Settings = settings.Settings
 Notifer_Settings = notifier_settings.Notifier_Settings
 Runtime_Flags = runtime.Runtime_Flags
 Automation_Settings = automation.Automation
+Monsters = monsters.Monsters

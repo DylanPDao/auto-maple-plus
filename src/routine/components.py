@@ -255,6 +255,11 @@ class Move(Command):
             while config.enabled and counter > 0 and \
                     local_error > settings.move_tolerance and \
                     global_error > settings.move_tolerance:
+                if config.bot.combat.monster_nearby():      # Fight monsters met on the way
+                    if self.prev_direction:
+                        key_up(self.prev_direction)
+                        self.prev_direction = ''
+                    config.bot.combat.engage()
                 if toggle:
                     d_x = point[0] - config.player_pos[0]
                     if abs(d_x) > settings.move_tolerance / math.sqrt(2):

@@ -47,6 +47,7 @@ class Record(LabelFrame):
             index = int(selects[0])
             pos = self.entries[index][1]
             self.parent.minimap.draw_point(tuple(float(x) for x in pos))
+            self.parent.paths.clear_selection()
 
             routine = self.parent.routine
             routine.components.clear_selection()

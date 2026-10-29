@@ -13,7 +13,8 @@ class Listener(Configurable):
         'Start/stop': 'f4',
         'Recalibrate Minimap': 'f5',
         'Reload routine': 'f6',
-        'Record position': 'f7'
+        'Record position': 'f7',
+        'Record path': 'f8'
     }
     BLOCK_DELAY = 1         # Delay after blocking restricted button press
 
@@ -55,6 +56,8 @@ class Listener(Configurable):
                     Listener.reload_routine()
                 elif self.restricted_pressed('Record position'):
                     Listener.record_position()
+                elif self.restricted_pressed('Record path'):
+                    Listener.record_path()
             time.sleep(0.01)
 
     def restricted_pressed(self, action):
@@ -112,4 +115,21 @@ class Listener(Configurable):
         now = datetime.now().strftime('%I:%M:%S %p')
         config.gui.edit.record.add_entry(now, pos)
         print(f'\n[~] Recorded position ({pos[0]}, {pos[1]}) at {now}')
+        time.sleep(0.6)
+
+    @staticmethod
+    def record_path():
+        """Starts or stops recording a movement path, named from the Edit tab if a name is set."""
+
+        name = None
+        try:
+            name = config.gui.edit.paths.path_name.get()
+        except AttributeError:
+            pass
+        config.bot.paths.toggle(name)
+        try:
+            config.gui.edit.paths.refresh()         # Shows the recording state
+        except AttributeError:
+            pass
+        winsound.Beep(659 if config.bot.paths.recording else 523, 200)
         time.sleep(0.6)

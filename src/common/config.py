@@ -19,6 +19,9 @@ enabled = False
 # If there is another player in the map, Auto Maple will purposely make random human-like mistakes
 stage_fright = False
 
+# Whether the bot is paused for an anti-ban break
+on_break = False
+
 # Represents the current shortest path that the bot is taking
 path = []
 

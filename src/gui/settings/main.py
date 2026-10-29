@@ -33,3 +33,4 @@ class Settings(Tab):
         class_name = config.bot.command_book.name.capitalize()
         self.class_bindings = KeyBindings(self.column2, f'{class_name} Keybindings', config.bot.command_book)
         self.class_bindings.pack(side=tk.TOP, fill='x', expand=True)
+        config.gui.monsters.combat_settings.refresh_commands()      # Attack dropdown on the Combat tab
