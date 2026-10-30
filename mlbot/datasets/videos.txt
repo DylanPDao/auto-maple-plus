@@ -1,0 +1,6 @@
+# YouTube gameplay for detector training (any class is fine). One URL per line.
+https://youtu.be/2Fu1w8fdsJM   # CHAOSDixieMan - 12 mins of Henesys Hunting Ground 1
+https://youtu.be/MbynolGc-kA   # The Plug Games - Day 2, Henesys grind to lv 12 (no commentary)
+https://youtu.be/ASUbGIdduuc   # Brillz - No-Commentary Day 1 (EP 1)
+https://youtu.be/r7yy3VT9Crs   # Brillz - Rush Hour on Line 1, Kerning Subway (EP 11)
+https://youtu.be/uRyffAQsorE   # Ditoeight - Grinding, no commentary (2.5 h)

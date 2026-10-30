@@ -1,0 +1,44 @@
+# Single config file for the learned-policy bot: window, ROIs, keybinds, recorder, model paths.
+
+[game]
+window_title = "MapleStory"
+
+[capture]
+# dxcam target rate. The recorder stores every new frame dxcam delivers, up to this rate.
+fps = 60
+
+# Regions of interest, in pixels relative to the game window's CLIENT area: [x, y, width, height].
+# Set them with:  python -m mlbot.tools.pick_rois
+[capture.rois.minimap]
+rect = [0, 0, 220, 160]
+format = "png"          # lossless: minimap dots are a few pixels wide
+
+[capture.rois.play]
+rect = [0, 0, 1366, 768]
+format = "jpg"
+quality = 90
+scale = 1.0             # downscale factor applied before encoding
+
+[keybinds]
+# Action -> key name (see mlbot/keys.py for names). Used by the recorder for labels
+# and later by the policy's action space.
+left = "left"
+right = "right"
+up = "up"
+down = "down"
+jump = "alt"
+attack = "ctrl"
+skill = "shift"
+loot = "z"
+hp_potion = "d"
+mp_potion = "s"
+
+[recorder]
+out_dir = "recordings/sessions"
+chunk_frames = 600      # frames per chunk file (~10 s at 60 fps)
+queue_frames = 240      # frames buffered for the writer before the recorder starts dropping
+toggle_key = "`"        # pause/resume recording; Ctrl+C in the console stops and saves
+
+[models]
+detector = "models/detector.onnx"
+policy = "models/policy.onnx"

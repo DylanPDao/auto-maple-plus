@@ -1,0 +1,10 @@
+# torch/torchvision come from the CUDA index:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+dxcam
+tomli; python_version < "3.11"
+numpy<2
+opencv-python==4.8.0.76
+ultralytics
+onnx
+onnxruntime-gpu
+pytest

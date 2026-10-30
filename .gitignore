@@ -5,3 +5,6 @@ assets/models/
 *.iml
 recordings/
 resources/layouts/
+/models/
+/datasets/
+*.pt
