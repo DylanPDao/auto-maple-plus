@@ -7,10 +7,9 @@ from pathlib import Path
 
 from mlbot.config import ROOT
 
-# Every character on screen is 'player'; which one is you gets decided later by matching
-# against your minimap dot ('mm_me'), since look-alike characters can't be told apart reliably
-# from a single frame.
-CLASSES = ['player', 'mob', 'rope', 'portal', 'mm_me', 'mm_other']
+# Every character on screen is 'player'; which one is you gets decided later from your name tag
+# (perception/identity.py), since look-alike characters can't be told apart by looks alone.
+CLASSES = ['player', 'mob', 'rope', 'portal', 'mm_me', 'mm_other', 'loot']
 
 DATASETS = ROOT.parent / 'datasets'
 RAW = DATASETS / 'raw'

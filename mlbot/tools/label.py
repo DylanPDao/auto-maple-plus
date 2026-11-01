@@ -2,13 +2,14 @@
 Draw detector boxes on extracted frames.
 
     python -m mlbot.tools.label [--model models/detector.pt] [--review] [--scale 1.5]
+    python -m mlbot.tools.label --review --model models/detector.pt --add loot
 
 Shows unlabeled frames from datasets/raw in a random (fixed) order, so labeling any number of
 them gives a spread over every video. With --model, boxes are pre-filled by the detector and
 you only fix them. --review goes through frames that already have labels instead.
 
     mouse   left-drag: draw box    right-click: delete box under cursor
-    1-6     pick class             space / d: save, next      a: save, previous
+    1-7     pick class            space / d: save, next      a: save, previous
     u       undo last box          c: clear boxes             x: skip frame (don't save)
     r       remove this frame's labels file (back to unlabeled), next
     h       hide/show boxes        q / Esc: save and quit
@@ -28,16 +29,19 @@ from mlbot.perception.labels import CLASSES, Box
 from mlbot.tools.prelabel_minimap import prelabel_path
 
 WINDOW = 'label'
-COLORS = [(0, 255, 255), (0, 0, 255), (255, 160, 0), (255, 0, 255), (0, 255, 0), (0, 128, 255)]
+COLORS = [(0, 255, 255), (0, 0, 255), (255, 160, 0), (255, 0, 255), (0, 255, 0), (0, 128, 255),
+          (255, 255, 255)]
 MIN_BOX = 2  # px, smaller drags count as clicks
 
 
 class Labeler:
-    def __init__(self, images: list[Path], scale: float, model=None, conf: float = 0.35) -> None:
+    def __init__(self, images: list[Path], scale: float, model=None, conf: float = 0.35,
+                 add_classes: set[int] | None = None) -> None:
         self.images = images
         self.scale = scale
         self.model = model
         self.conf = conf
+        self.add_classes = add_classes or set()
         self.cls = 0
         self.boxes: list[Box] = []
         self.image: np.ndarray | None = None
@@ -55,6 +59,13 @@ class Labeler:
         self.prelabeled = False
         if lp.exists():
             self.boxes = labels.read(lp, w, h)
+            if self.model is not None and self.add_classes:
+                # a class added after these frames were labeled: pre-draw just that class
+                have = [b for b in self.boxes if b.cls in self.add_classes]
+                new = [b for b in self.predict(self.image) if b.cls in self.add_classes and
+                       not any(d.contains((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2) for d in have)]
+                self.boxes += new
+                self.prelabeled = bool(new)
             return
         self.boxes = []
         pre = prelabel_path(path)
@@ -62,9 +73,11 @@ class Labeler:
             self.boxes = labels.read(pre, w, h)
             self.prelabeled = bool(self.boxes)
         if self.model is not None:
-            # colour-found minimap dots beat the model's, keep the model for everything else
-            dot_classes = {b.cls for b in self.boxes}
-            self.boxes += [b for b in self.predict(self.image) if b.cls not in dot_classes]
+            # colour-found minimap dots beat the model's; keep model dots the colour pass missed
+            # (it only sees navy minimaps, sometimes just part of one)
+            dots = list(self.boxes)
+            self.boxes += [b for b in self.predict(self.image)
+                           if not any(d.contains((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2) for d in dots)]
             self.prelabeled = True
 
     def save(self, path: Path) -> None:
@@ -184,6 +197,9 @@ def main() -> None:
     parser.add_argument('--review', action='store_true', help='go through already-labeled frames')
     parser.add_argument('--scale', type=float, default=1.5, help='window zoom (small minimap dots)')
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--add', nargs='+', choices=CLASSES, default=[],
+                        help='with --review --model: pre-draw these classes onto existing labels '
+                             '(for a class added after the frames were labeled, e.g. loot)')
     args = parser.parse_args()
 
     images = [p for p in all_images() if labels.label_path(p).exists() == args.review]
@@ -196,7 +212,7 @@ def main() -> None:
         from ultralytics import YOLO
         model = YOLO(str(args.model))
     print(f'{len(images)} frames to go, {count_labeled()} labeled so far')
-    Labeler(images, args.scale, model, args.conf).run()
+    Labeler(images, args.scale, model, args.conf, {CLASSES.index(c) for c in args.add}).run()
 
 
 if __name__ == '__main__':

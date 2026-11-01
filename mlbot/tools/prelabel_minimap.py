@@ -44,6 +44,11 @@ def minimap_area(image: np.ndarray) -> tuple[int, int, int, int] | None:
 
 
 def find_dots(image: np.ndarray) -> list[Box]:
+    """
+    Dots inside a navy minimap. Minimaps that show the map's own art instead of navy return
+    nothing here; the labeler then falls back to the detector's minimap boxes.
+    """
+
     area = minimap_area(image)
     if area is None:
         return []
